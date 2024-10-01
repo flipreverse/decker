@@ -820,9 +820,9 @@ function toggleTouch() {
     buttonTouch.dataset.active = useTouch;
    	buttonTouch.setAttribute("aria-checked", useTouch);
 	if (useTouch) {
-        slides.style.overflow = "";
-	} else {
         slides.style.overflow = "hidden";
+	} else {
+        slides.style.overflow = "";
 	}
 }
 
@@ -1655,7 +1655,7 @@ function setupKeyBindings() {
   );
 
   Reveal.addKeyBinding(
-    { keyCode: 84, key: "t", description: "Toggle Touch Mode" },
+    { keyCode: 84, key: "T", description: "Toggle Touch Mode" },
     toggleTouch
   );
 
