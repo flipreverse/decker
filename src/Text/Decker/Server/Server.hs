@@ -161,7 +161,8 @@ uploadResource suffixes = do
       reader <- bodyReader
       liftIO $ do
         writeBody tmp reader
-        renamePath tmp destination
+        Dir.copyFile tmp destination
+        Dir.removeFile tmp
     else do
       text "ERROR: directory does not exist or file (suffix) is not uploadable"
       status status406
