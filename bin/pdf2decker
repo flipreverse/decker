@@ -61,6 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--scale', type=float, help='Factor to scale slide dimensions', default=1.0)
     parser.add_argument('-a', '--no-author', action='store_true', help='Do not add the author to the deck')
     parser.add_argument('-d', '--no-decker', action='store_true', help='Do not generate decker.yaml')
+    parser.add_argument('-t', '--no-title', action='store_true', help='Do not add a dedicated title slide')
     parser.add_argument('-u', '--update', action='store_true', help='Just update the extracted slides.')
     parser.add_argument('pdf', help='The PDF file to convert')
     parser.add_argument('decker_dir', help='The output dir to store the decker files')
@@ -99,7 +100,14 @@ if __name__ == '__main__':
     with open(outDeck, 'wt') as f:
         firstPage = reader.pages[0]
         f.write("---\n")
-        f.write("title: '{}'\n".format(meta.title))
+        if meta.title is not None:
+            title = meta.title
+        else:
+            title = fBasename
+        if args.no_title:
+            f.write("title: false\n")
+        else:
+            f.write("title: '{}'\n".format(title))
         if not args.no_author:
             f.write("author: '{}'\n".format(meta.author))
         f.write("reveal:\n")
@@ -108,7 +116,7 @@ if __name__ == '__main__':
         f.write("---\n\n")
         i = 0
         k = 0
-        last = {'title': meta.title, 'count': None}
+        last = {'title': title, 'count': None, 'level': 0}
         for page in reader.pages:
             if i in outline:
                 last = outline[i]
@@ -118,7 +126,11 @@ if __name__ == '__main__':
             if i == 0:
                 i = i + 1
                 continue
-            f.write("# {{ menu-title=\"{} ({:d})\" }}\n\n".format(last['title'], k))
+            if last['title'] is None or last['title'] == title:
+                menuTitle = "{} - Slide {:d}".format(title, i)
+            else:
+                menuTitle = "{} ({:d})".format(last['title'], k)
+            f.write("# {{ menu-title=\"{}\" }}\n\n".format(menuTitle))
             svgName = SVG_SUBDIR + os.sep + fBasename + "-page-{:02d}".format(i) + ".svg"
             f.write("![]({}){{width=var(--slide-width) height=var(--slide-height)}}\n\n".format(svgName))
             i = i + 1
