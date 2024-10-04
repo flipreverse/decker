@@ -180,13 +180,16 @@ appendVideoUpload transcode upload webm = do
     [single] -> do
       let name0 = setSequenceNumber 0 webm
       let name1 = setSequenceNumber 1 webm
-      renameFile single name0
-      renameFile upload name1
+      copyFile single name0
+      removeFile single
+      copyFile upload name1
+      removeFile upload
       when transcode $ concatVideoMp4 fast [name0, name1] mp4
     multiple -> do
       let number = getHighestSequenceNumber multiple
       let name = setSequenceNumber (number + 1) webm
-      renameFile upload name
+      copyFile upload name
+      removeFile upload
       when transcode $ concatVideoMp4 fast (multiple <> [name]) mp4
 
 -- | Sets the sequence number of a file. The number is appended to the base file
