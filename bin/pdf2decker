@@ -20,104 +20,107 @@ LOGGER = logging.getLogger(__name__)
 SVG_SUBDIR = "pages"
 
 def checkTools():
-	tools = ["pdf2svg", "pdfinfo", "decker"]
-	for tool in tools:
-		if which(tool) is None:
-			LOGGER.error(tool + " is missing")
-			return False
-	return True
+    tools = ["pdf2svg", "pdfinfo", "decker"]
+    for tool in tools:
+        if which(tool) is None:
+            LOGGER.error(tool + " is missing")
+            return False
+    return True
 
 
 def extractSlides(reader, inPdf, fBasename, outDir):
-	svgDir = outDir + os.path.sep + SVG_SUBDIR
-	if not os.path.isdir(svgDir):
-		os.mkdir(svgDir)
-	svgFormat = svgDir + os.sep + fBasename + '-page-%02d.svg'
-	ret = subprocess.run("pdf2svg {} '{}' all".format(inPdf, svgFormat), shell=True, capture_output=True)
-	if ret.returncode != 0:
-		LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode().replace('\n', '')))
-		sys.exit(1)
+    svgDir = outDir + os.path.sep + SVG_SUBDIR
+    if not os.path.isdir(svgDir):
+        os.mkdir(svgDir)
+    svgFormat = svgDir + os.sep + fBasename + '-page-%02d.svg'
+    ret = subprocess.run("pdf2svg {} '{}' all".format(inPdf, svgFormat), shell=True, capture_output=True)
+    if ret.returncode != 0:
+        LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode().replace('\n', '')))
+        sys.exit(1)
 
 
 def extractOutline(outlines, level=0):
-	ret = dict()
-	for outline in outlines:
-		if isinstance(outline, Destination):
-			pageNo = reader.get_destination_page_number(outline)
-			ret[pageNo] = {'title': outline.title, 'count': outline.outline_count, 'level': level}
-		elif isinstance(outline, list):
-			ret.update(extractOutline(outline, level=level+1))
-		else:
-			LOGGER.fatal("Unkown outline type!")
-			sys.exit(1)
+    ret = dict()
+    for outline in outlines:
+        if isinstance(outline, Destination):
+            pageNo = reader.get_destination_page_number(outline)
+            ret[pageNo] = {'title': outline.title, 'count': outline.outline_count, 'level': level}
+        elif isinstance(outline, list):
+            ret.update(extractOutline(outline, level=level+1))
+        else:
+            LOGGER.fatal("Unkown outline type!")
+            sys.exit(1)
 
-	return ret
+    return ret
 
 if __name__ == '__main__':
 
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
-	parser.add_argument('-s', '--sections', action='store_true', help='Add section slides')
-	parser.add_argument('-l', '--scale', type=float, help='Factor to scale slide dimensions', default=1.0)
-	parser.add_argument('-a', '--no-author', action='store_true', help='Do not add the author to the deck')
-	parser.add_argument('-d', '--no-decker', action='store_true', help='Do not generate decker.yaml')
-	parser.add_argument('pdf', help='The PDF file to convert')
-	parser.add_argument('decker_dir', help='The output dir to store the decker files')
-	args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', action='store_true', help='Be verbose')
+    parser.add_argument('-s', '--sections', action='store_true', help='Add section slides')
+    parser.add_argument('-l', '--scale', type=float, help='Factor to scale slide dimensions', default=1.0)
+    parser.add_argument('-a', '--no-author', action='store_true', help='Do not add the author to the deck')
+    parser.add_argument('-d', '--no-decker', action='store_true', help='Do not generate decker.yaml')
+    parser.add_argument('-u', '--update', action='store_true', help='Just update the extracted slides.')
+    parser.add_argument('pdf', help='The PDF file to convert')
+    parser.add_argument('decker_dir', help='The output dir to store the decker files')
+    args = parser.parse_args()
 
-	if args.verbose:
-		LOGGER.setLevel(logging.DEBUG)
-	else:
-		LOGGER.setLevel(logging.INFO)
+    if args.verbose:
+        LOGGER.setLevel(logging.DEBUG)
+    else:
+        LOGGER.setLevel(logging.INFO)
 
-	if not checkTools():
-		LOGGER.fatal('Not all tools are available. Stop!')
-		sys.exit(1)
+    if not checkTools():
+        LOGGER.fatal('Not all tools are available. Stop!')
+        sys.exit(1)
 
-	inPdf = args.pdf
-	outDir = args.decker_dir
-	scale = args.scale
-	fBasename = os.path.basename(inPdf).split('.')[0]
-	if not os.path.isdir(outDir):
-		os.mkdir(outDir)
+    inPdf = args.pdf
+    outDir = args.decker_dir
+    scale = args.scale
+    fBasename = os.path.basename(inPdf).split('.')[0]
+    if not os.path.isdir(outDir):
+        os.mkdir(outDir)
 
-	reader = PdfReader(inPdf)
-	extractSlides(reader, inPdf, fBasename, outDir)
-	outline = extractOutline(reader.outline)
-	meta = reader.metadata
+    reader = PdfReader(inPdf)
+    extractSlides(reader, inPdf, fBasename, outDir)
+    if args.update:
+        sys.exit(0)
+    outline = extractOutline(reader.outline)
+    meta = reader.metadata
 
-	if not args.no_decker:
-		outYaml = outDir + os.sep + 'decker.yaml'
-		if not os.path.isfile(outYaml):
-			with open(outYaml, 'wt') as f:
-				f.write('resource-pack: exe:tudo')
+    if not args.no_decker:
+        outYaml = outDir + os.sep + 'decker.yaml'
+        if not os.path.isfile(outYaml):
+            with open(outYaml, 'wt') as f:
+                f.write('resource-pack: exe:tudo')
 
-	outDeck = outDir + os.sep + fBasename + '-deck.md'
-	with open(outDeck, 'wt') as f:
-		firstPage = reader.pages[0]
-		f.write("---\n")
-		f.write("title: '{}'\n".format(meta.title))
-		if not args.no_author:
-			f.write("author: '{}'\n".format(meta.author))
-		f.write("reveal:\n")
-		f.write("  width: {:.2f}\n".format(firstPage.mediabox.width * scale))
-		f.write("  height: {:.2f}\n".format(firstPage.mediabox.height * scale))
-		f.write("---\n\n")
-		i = 0
-		k = 0
-		last = {'title': meta.title, 'count': None}
-		for page in reader.pages:
-			if i in outline:
-				last = outline[i]
-				k = 1
-				if args.sections and last['level'] <= 1:
-					f.write("# {}\n\n".format(last['title']))
-			if i == 0:
-				i = i + 1
-				continue
-			f.write("# {{ menu-title=\"{} ({:d})\" }}\n\n".format(last['title'], k))
-			svgName = SVG_SUBDIR + os.sep + fBasename + "-page-{:02d}".format(i) + ".svg"
-			f.write("![]({}){{width=var(--slide-width) height=var(--slide-height)}}\n\n".format(svgName))
-			i = i + 1
-			k = k + 1
-	LOGGER.info("Succefully converted '{}' to Decker in '{}'. Output is located at '{}'".format(inPdf, outDeck, outDir))
+    outDeck = outDir + os.sep + fBasename + '-deck.md'
+    with open(outDeck, 'wt') as f:
+        firstPage = reader.pages[0]
+        f.write("---\n")
+        f.write("title: '{}'\n".format(meta.title))
+        if not args.no_author:
+            f.write("author: '{}'\n".format(meta.author))
+        f.write("reveal:\n")
+        f.write("  width: {:.2f}\n".format(firstPage.mediabox.width * scale))
+        f.write("  height: {:.2f}\n".format(firstPage.mediabox.height * scale))
+        f.write("---\n\n")
+        i = 0
+        k = 0
+        last = {'title': meta.title, 'count': None}
+        for page in reader.pages:
+            if i in outline:
+                last = outline[i]
+                k = 1
+                if args.sections and last['level'] <= 1:
+                    f.write("# {}\n\n".format(last['title']))
+            if i == 0:
+                i = i + 1
+                continue
+            f.write("# {{ menu-title=\"{} ({:d})\" }}\n\n".format(last['title'], k))
+            svgName = SVG_SUBDIR + os.sep + fBasename + "-page-{:02d}".format(i) + ".svg"
+            f.write("![]({}){{width=var(--slide-width) height=var(--slide-height)}}\n\n".format(svgName))
+            i = i + 1
+            k = k + 1
+    LOGGER.info("Succefully converted '{}' to Decker in '{}'. Output is located at '{}'".format(inPdf, outDeck, outDir))
