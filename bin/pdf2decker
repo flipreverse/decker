@@ -123,16 +123,21 @@ if __name__ == '__main__':
                 k = 1
                 if args.sections and last['level'] <= 1:
                     f.write("# {}\n\n".format(last['title']))
-            if i == 0:
-                i = i + 1
-                continue
             if last['title'] is None or last['title'] == title:
                 menuTitle = "{} - Slide {:d}".format(title, i)
             else:
                 menuTitle = "{} ({:d})".format(last['title'], k)
             f.write("# {{ menu-title=\"{}\" }}\n\n".format(menuTitle))
-            svgName = SVG_SUBDIR + os.sep + fBasename + "-page-{:02d}".format(i) + ".svg"
+            svgName = SVG_SUBDIR + os.sep + fBasename + "-page-{:02d}".format(i + 1) + ".svg"
             f.write("![]({}){{width=var(--slide-width) height=var(--slide-height)}}\n\n".format(svgName))
+            if "/Annots" in page:
+                for annot in page["/Annots"]:
+                    obj = annot.get_object()
+                    if obj['/Subtype'] == '/Text':
+                        text = obj['/Contents'].replace("\r", "\n\n")
+                        f.write("::: notes\n")
+                        f.write(text + "\n")
+                        f.write(":::\n\n\n")
             i = i + 1
             k = k + 1
     LOGGER.info("Succefully converted '{}' to Decker in '{}'. Output is located at '{}'".format(inPdf, outDeck, outDir))
