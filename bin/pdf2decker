@@ -127,7 +127,7 @@ if __name__ == '__main__':
                 menuTitle = "{} - Slide {:d}".format(title, i)
             else:
                 menuTitle = "{} ({:d})".format(last['title'], k)
-            f.write("# {{ menu-title=\"{}\" }}\n\n".format(menuTitle))
+            f.write("# {{ menu-title=\"{}\" .pdf2decker }}\n\n".format(menuTitle))
             svgName = SVG_SUBDIR + os.sep + fBasename + "-page-{:02d}".format(i + 1) + ".svg"
             f.write("![]({}){{width=var(--slide-width) height=var(--slide-height)}}\n\n".format(svgName))
             if "/Annots" in page:
