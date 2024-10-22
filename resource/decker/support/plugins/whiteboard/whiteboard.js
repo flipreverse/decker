@@ -1689,6 +1689,27 @@ function setupKeyBindings() {
   }
 
   Reveal.addKeyBinding(
+    { keyCode: 77, key: "M", description: "Whiteboard: Pen color red (marker)" },
+    () => {
+      selectPenColor("var(--base08)");
+    }
+  );
+
+  Reveal.addKeyBinding(
+    { keyCode: 89, key: "Y", description: "Whiteboard: Pen color yellow" },
+    () => {
+      selectPenColor("var(--base0A)");
+    }
+  );
+
+  Reveal.addKeyBinding(
+    { keyCode: 66, key: "B", description: "Whiteboard: Pen color blue" },
+    () => {
+      selectPenColor("var(--base0D)");
+    }
+  );
+
+  Reveal.addKeyBinding(
     { keyCode: 56, key: "8", description: "Whiteboard: Pen radius 2" },
     () => {
       selectPenRadius(2);
@@ -1696,16 +1717,16 @@ function setupKeyBindings() {
   );
 
   Reveal.addKeyBinding(
-    { keyCode: 57, key: "9", description: "Whiteboard: Pen radius 4" },
+    { keyCode: 57, key: "9", description: "Whiteboard: Pen radius 8" },
     () => {
-      selectPenRadius(4);
+      selectPenRadius(8);
     }
   );
 
   Reveal.addKeyBinding(
-    { keyCode: 48, key: "0", description: "Whiteboard: Pen radius 6" },
+    { keyCode: 48, key: "0", description: "Whiteboard: Pen radius 16" },
     () => {
-      selectPenRadius(6);
+      selectPenRadius(16);
     }
   );
 }
