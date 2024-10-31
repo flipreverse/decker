@@ -468,7 +468,7 @@ class Feedback {
       }
       ${
         isAdmin
-          ? `<button class="far fa-plus-square feedback-answer-question-button" title="${text.add}" aria-label="${text.add}"></button>`
+          ? `<button class="fa fa-reply feedback-answer-question-button" title="${text.add}" aria-label="${text.add}"></button>`
           : ""
       }
       ${
@@ -530,7 +530,6 @@ class Feedback {
         this.answerQuestion(comment)
       );
     }
-    MathJax.typeset([question]);
     return question;
   }
 
@@ -573,7 +572,6 @@ class Feedback {
       let deleteButton = item.querySelector(".feedback-delete-answer-button");
       deleteButton.addEventListener("click", () => this.deleteAnswer(answer));
     }
-    MathJax.typeset([item]);
     return item;
   }
 
@@ -604,7 +602,7 @@ class Feedback {
         this.menu.feedback_list.appendChild(block);
       }
     }
-
+    MathJax.typeset([this.menu.feedback_list]);
     this.menu.feedback_list.scrollTop = 0;
   }
 
