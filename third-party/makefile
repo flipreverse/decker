@@ -6,7 +6,7 @@ SHELL := $(shell which bash)
 support := ../resource/decker/support/vendor
 third := $(shell realpath .)
 
-upgrade: mathjax reveal.js highlight.js fontawesome videojs d3 chartjs codapi-js codejar highlight
+upgrade: mathjax reveal.js highlight.js fontawesome videojs d3 chartjs codapi-js codejar codejar-linenumbers highlight
 
 d3:
 	@rsync d3.v6.min.js $(support)
@@ -50,8 +50,13 @@ codejar:
 	@mkdir -p $(support)/codejar
 	@rsync -r codejar/dist/* $(support)/codejar
 
+codejar-linenumbers:
+	@(cd codejar-linenumbers; npm run build:js)
+	@mkdir -p $(support)/codejar-linenumbers
+	@rsync -r codejar-linenumbers/dist/js/* $(support)/codejar-linenumbers
+
 highlight:
 	@mkdir -p $(support)/highlight
 	@rsync -r highlight/* $(support)/highlight
 
-.PHONY: upgrade clean prepare fontawesome reveal.js highlight.js mathjax videojs chartjs codapi-js codejar highlight
+.PHONY: upgrade clean prepare fontawesome reveal.js highlight.js mathjax videojs chartjs codapi-js codejar codejar-linenumbers highlight
