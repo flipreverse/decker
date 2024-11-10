@@ -13,3 +13,6 @@
 [submodule "third-party/codejar"]
 	path = third-party/codejar
 	url = https://github.com/decker-edu/codejar.git
+[submodule "third-party/codejar-linenumbers"]
+	path = third-party/codejar-linenumbers
+	url = https://github.com/julianpoemp/codejar-linenumbers.git

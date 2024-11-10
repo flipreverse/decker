@@ -48,7 +48,7 @@
       highlight(code);
 
       // start CodeJar on the code. Let it handle highlighting.
-      codejar.CodeJar(code, highlight, {
+      codejar.CodeJar(code, CodeJar.withLineNumbers(highlight), {
         tab: " ".repeat(2),
       });
 
