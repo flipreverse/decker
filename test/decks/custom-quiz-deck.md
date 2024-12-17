@@ -1,7 +1,15 @@
 ---
 title: Custom Quizzes
-#quizzer:
-#  url: 'https://quiz.jetzt'
+quizzer:
+  url: 'https://quiz.jetzt'
+  audio:
+    start: 'default'
+    loop: 'default'
+    end: 'default'
+    volume: 0.75
+reveal:
+  center: true
+
 ---
 
 # Choice Quiz
@@ -21,9 +29,9 @@ What is **not** a mathematical operation?
 
 :::
 
-# Choic Quiz as a poll
+# Choice Quiz as a poll
 
-::: {.quizzer .choice}
+::: { .quizzer .choice }
 
 What is your semester?
 
@@ -31,6 +39,35 @@ What is your semester?
 - [ ] `3 - 4`
 - [ ] `5 - 6`
 - [ ] `>6`
+
+:::
+
+# Choice Quiz as a poll
+
+::: { .quizzer .choice }
+
+What is your semester?
+
+::: w50
+
+- [ ] `1 - 2`
+- [ ] `3 - 4`
+- [ ] `5 - 6`
+- [ ] `>6`
+
+:::
+
+:::
+
+# Choice Quiz with Math
+
+::: {.quizzer .choice}
+
+What is $A \times B$?
+
+- [x] $\begin{pmatrix}1 & 2 & 3\\4 & 5 & 6\\7 & 8 & 9\end{pmatrix}$
+- [ ] $\begin{pmatrix}a & b & c\\d & e & f\\g & h & i\end{pmatrix}$
+- [ ] $\begin{pmatrix}1 & 0 & 0\\0 & 1 & 0\\0 & 0 & 1\end{pmatrix}$
 
 :::
 
@@ -94,6 +131,20 @@ What did you eat for dinner today?
 
 :::
 
+# Freetext Quiz Multiple Fields
+
+::: {.quizzer .freetext}
+
+What did you eat for dinner today?
+
+- [x] Mensa
+
+---
+
+- [x] Pizza
+
+:::
+
 # Graceful Fail: Not enough Answers
 
 ::: {.quizzer .freetext}
@@ -148,13 +199,42 @@ Test [#1] Two [#2] Three [#3]
 
 Assign these people to their correct group.
 
-- [ ] Hauer
-  - WiMis
+- [ ] Olaf
+  - Chancelor
 - [ ] Mario
-  - Profs
-- [ ] Harmeling
-  - Profs
-- [ ] Second
-  - Studis
+  - Professor
+- [ ] Linus
+  - Developer
 
 :::
+
+# Assignment Quiz via Definition List
+
+::: {.quizzer .assignment}
+
+Assign these people to their correct group.
+
+
+Chancelor
+: Olaf
+: Bauer
+
+Professor
+: Mario
+
+Developer
+: Linus
+
+:::
+
+# Special Case: Image as question?
+
+::: {.quizzer .choice}
+
+![](./@f{u}nn%20y.png)
+
+- [x] Yes
+- [ ] No
+
+:::
+

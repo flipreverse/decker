@@ -1,4 +1,4 @@
-import Client, { ClientStates } from "./client.mjs";
+import Client from "./client.mjs";
 import Renderer, { resetAssignmentState } from "./renderer.mjs";
 import bwip from "../examiner/bwip.js";
 import "../../vendor/d3.v6.min.js";
@@ -33,7 +33,17 @@ let qrRightLabel = document.createElement("span");
 let qrLink = document.createElement("a");
 let qrClose = document.createElement("button");
 
-let resultContainer;
+/* Results */
+
+let resultContainer = document.createElement("div");
+let closeResultsButton = document.createElement("button");
+let resultsAvailable = false;
+
+/* Audio */
+
+let startAudio = undefined;
+let loopAudio = undefined;
+let endAudio = undefined;
 
 /**
  * Checks if the given rect contains the given (x,y) coordinate.
@@ -142,8 +152,9 @@ function parseQuizzes(reveal) {
         quizObject.type = "choice";
       }
       /* ... interpret each list in the container as a choice object ... */
-      const lists = quizzer.querySelectorAll(":scope > ul");
-      // console.log(lists);
+      const lists = quizzer.querySelectorAll(
+        ":scope *:not(li) > ul, :scope > ul"
+      );
       for (const list of lists) {
         const choiceObject = {
           votes: 1, // By default you have at least one vote
@@ -183,27 +194,36 @@ function parseQuizzes(reveal) {
         }
         quizObject.choices.push(choiceObject);
         /* ... remove the list from the DOM ... */
-        list.remove();
+        list.choices = choiceObject;
       }
-      /* ... remove hr elements from DOM because they are only used as list separators ... */
-      const hrules = quizzer.querySelectorAll("hr");
-      for (const hrule of hrules) {
-        hrule.remove();
-      }
-      /* ... clean up empty spans and ps ... */
-      while (
-        quizzer.querySelectorAll(":is(span,p)[display]:empty").length > 0
-      ) {
-        const empties = quizzer.querySelectorAll(":is(p,span):empty");
-        for (const empty of empties) {
-          empty.remove();
+      /* ... parse definition lists for assignments, too ... */
+      if (quizObject.type === "assignment") {
+        const defLists = quizzer.querySelectorAll(":scope dl");
+        for (const defList of defLists) {
+          const choiceObject = {
+            votes: 1, // By default you have at least one vote
+            options: [],
+          };
+          let currentCategory = undefined;
+          while (defList.firstElementChild) {
+            const child = defList.firstElementChild;
+            if (child.tagName === "DT") {
+              currentCategory = child.textContent;
+            }
+            if (child.tagName === "DD") {
+              const answerObject = {
+                label: undefined,
+                reason: undefined,
+                correct: false,
+              };
+              answerObject.label = child.textContent;
+              answerObject.reason = currentCategory;
+              choiceObject.options.push(answerObject);
+            }
+            child.remove();
+          }
+          quizObject.choices.push(choiceObject);
         }
-      }
-      /* ... after parsing the answers, interpret the rest of the inner quiz as the question ... */
-      quizObject.question = quizzer.innerHTML.trim();
-      /* Clean up the entire quizzer container */
-      while (quizzer.lastElementChild) {
-        quizzer.lastElementChild.remove();
       }
       /* Refine the quiz object for network */
       for (const choice of quizObject.choices) {
@@ -250,11 +270,34 @@ function parseQuizzes(reveal) {
           letter = String.fromCharCode(letter.charCodeAt(0) + 1);
         }
       }
+      if (quizObject.type === "choice") {
+        for (const list of lists) {
+          const container = Renderer.renderChoiceButtons(list.choices);
+          list.replaceWith(container);
+        }
+      } else {
+        for (const list of lists) {
+          list.remove();
+        }
+      }
+      /* ... remove hr elements from DOM because they are only used as list separators ... */
+      const hrules = quizzer.querySelectorAll("hr");
+      for (const hrule of hrules) {
+        hrule.remove();
+      }
+      /* ... after parsing the answers, interpret the rest of the inner quiz as the question ... */
+      quizObject.question = quizzer.innerHTML.trim();
+      /* Clean up the entire quizzer container */
+      if (quizObject.type !== "choice") {
+        while (quizzer.lastElementChild) {
+          quizzer.lastElementChild.remove();
+        }
+      }
       /* Archive the quiz object into the quizzer container */
       quizzer.quiz = quizObject;
       /* Render the quiz interface according to its type */
       if (quizObject.type === "choice") {
-        Renderer.renderChoiceQuiz(quizzer, quizObject);
+        // Renderer.renderChoiceQuiz(quizzer, quizObject);
       } else if (quizObject.type === "freetext") {
         Renderer.renderFreeTextQuiz(quizzer, quizObject);
       } else if (quizObject.type === "selection") {
@@ -340,6 +383,10 @@ function createHostInterface(reveal) {
     }
     requireHost((host) => {
       const slide = Reveal.getCurrentSlide();
+      if (resultsAvailable) {
+        toggleResults();
+        return;
+      }
       if (activeQuiz) {
         host.requestEvaluation();
         document.documentElement.classList.remove("active-poll");
@@ -350,6 +397,25 @@ function createHostInterface(reveal) {
       if (slide && slide.quiz) {
         activeQuiz = slide.quiz;
         document.documentElement.classList.add("active-poll");
+        startAudio?.addEventListener(
+          "ended",
+          (event) => {
+            if (
+              loopAudio &&
+              document.documentElement.classList.contains("active-poll")
+            ) {
+              loopAudio.loop = true;
+              loopAudio.play();
+            }
+          },
+          { once: true }
+        );
+        startAudio?.play();
+        // If loop is defined but start is not, just start loop
+        if (!startAudio && loopAudio) {
+          loopAudio.loop = true;
+          loopAudio.play();
+        }
         host.sendQuiz(activeQuiz);
         return;
       }
@@ -370,6 +436,29 @@ function createHostInterface(reveal) {
   );
   connectionIndicator.title = l10n.uninitialized;
   connectionIndicator.ariaLabel = l10n.uninitialized;
+
+  /* Result Container */
+
+  resultContainer.classList.add("hidden");
+
+  // close button
+  closeResultsButton.title = l10n.clickToClose;
+  closeResultsButton.className = "close-button fa-button fas fa-times-circle";
+  closeResultsButton.addEventListener("click", () => {
+    hideResults();
+  });
+
+  resultContainer.appendChild(closeResultsButton);
+
+  // handle mouse translation
+  resultContainer.dragging = false;
+  resultContainer.dx = 0.0;
+  resultContainer.dy = 0.0;
+  resultContainer.onmousedown = startDrag;
+
+  resultContainer.classList.add("quizzer-results-container");
+
+  document.body.appendChild(resultContainer);
 
   /* Finish by placing buttons in the UI */
   anchors.placeButton(connectionIndicator, "BOTTOM_CENTER");
@@ -464,7 +553,7 @@ function requireHost(callback) {
 
     hostClient.on("pong", onPong);
 
-    hostClient.on("result", displayResult);
+    hostClient.on("result", renderResult);
 
     hostClient.on("ready", (session, secret) => {
       let backend = Decker.meta.quizzer?.url || "http://localhost:3000/";
@@ -553,34 +642,17 @@ function stopDrag(e) {
  * @param {*} result The result to be rendered. Right now the quiz and result need to match.
  * @returns
  */
-function displayResult(result) {
-  // (re)create resultContainer
-  if (resultContainer) {
-    resultContainer.remove();
+function renderResult(result) {
+  showResults();
+  if (loopAudio) {
+    loopAudio.pause();
+    loopAudio.currentTime = 0;
   }
-  resultContainer = document.createElement("div");
-
-  // close on slide change
-  Reveal.addEventListener("slidechanged", () => {
-    resultContainer.remove();
-  });
-
-  // close button
-  const closeButton = document.createElement("button");
-  closeButton.title = l10n.clickToClose;
-  closeButton.className = "close-button fa-button fas fa-times-circle";
-  resultContainer.appendChild(closeButton);
-  closeButton.addEventListener("click", () => {
-    resultContainer.remove();
-  });
-
-  // handle mouse translation
-  resultContainer.dragging = false;
-  resultContainer.dx = 0.0;
-  resultContainer.dy = 0.0;
-  resultContainer.onmousedown = startDrag;
-
-  resultContainer.classList.add("quizzer-results-container");
+  endAudio?.play();
+  const entries = resultContainer.querySelectorAll(".quizzer-result");
+  for (const entry of entries) {
+    entry.remove();
+  }
   if (awaitingQuiz && awaitingQuiz.type === "choice") {
     const entryContainer = document.createElement("div");
     entryContainer.classList.add("quizzer-result");
@@ -630,8 +702,8 @@ function displayResult(result) {
       const entryContainer = document.createElement("div");
       entryContainer.classList.add("quizzer-result");
       const canvas = document.createElement("canvas");
-      canvas.width = 1024;
-      canvas.height = 512;
+      canvas.width = 1280;
+      canvas.height = 720;
       entryContainer.appendChild(canvas);
       resultContainer.appendChild(entryContainer);
       const array = [];
@@ -642,7 +714,7 @@ function displayResult(result) {
       }
       WordCloud(canvas, {
         list: array,
-        gridSize: 4,
+        gridSize: 8,
         weightFactor: (size) => {
           return (size / most) * 64;
         },
@@ -700,6 +772,9 @@ function displayResult(result) {
    * is extremely fiddly with d3sankey.
    */
   if (awaitingQuiz && awaitingQuiz.type === "assignment") {
+    const entry = document.createElement("div");
+    entry.classList.add("quizzer-result");
+    resultContainer.appendChild(entry);
     let total = 0;
     for (const assignment of result.assignments) {
       total += assignment.count;
@@ -708,8 +783,8 @@ function displayResult(result) {
       return;
     }
     const margin = { top: 16, right: 16, left: 16, bottom: 16 };
-    const width = 800 - margin.left - margin.right;
-    const height = 600 - margin.top - margin.bottom;
+    const width = 1280 - margin.left - margin.right;
+    const height = 720 - margin.top - margin.bottom;
     const color = d3.scaleOrdinal(d3.schemeCategory10);
     const generator = d3
       .sankey()
@@ -717,10 +792,14 @@ function displayResult(result) {
       .nodePadding(32)
       .size([width, height]);
     const svg = d3
-      .select(resultContainer)
+      .select(entry)
       .append("svg")
-      .attr("class", "quizzer-result")
-      .attr("viewBox", "0 0 800 600")
+      .attr(
+        "viewBox",
+        `0 0 ${width + margin.left + margin.right} ${
+          height + margin.top + margin.bottom
+        }`
+      )
       .attr("preserveAspectRatio", "xMidYMid meet")
       .append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
@@ -848,15 +927,27 @@ function displayResult(result) {
         "translate(" +
           d.x +
           "," +
-          (d.y = Math.max(0, Math.min(height - d.dy, e.y))) +
+          (d.y = Math.max(0, Math.min(height - d.dy, d.y))) +
           ")"
       );
       generator.relayout();
       link.attr("d", d3.sankeyLinkHorizontal());
     }
   }
+  resultsAvailable = true;
+  document.documentElement.classList.add("results-available");
+}
 
-  document.body.appendChild(resultContainer);
+function hideResults() {
+  resultContainer.classList.add("hidden");
+}
+
+function showResults() {
+  resultContainer.classList.remove("hidden");
+}
+
+function toggleResults() {
+  resultContainer.classList.toggle("hidden");
 }
 
 /**
@@ -895,6 +986,9 @@ async function onPresenterMode(active) {
  */
 async function onSlideChange(event) {
   resetAssignmentState();
+  resultsAvailable = false;
+  document.documentElement.classList.remove("results-available");
+  hideResults();
   if (!Decker.isPresenterMode()) {
     return;
   }
@@ -920,7 +1014,54 @@ const Plugin = {
       return;
     }
     createHostInterface(reveal);
-    parseQuizzes(reveal);
+    try {
+      parseQuizzes(reveal);
+    } catch (error) {
+      console.error(error);
+      console.error("An error occured while parsing and rendering quizzes.");
+    }
+    if (Decker.meta.quizzer?.audio?.start) {
+      let startAudioSource;
+      if (Decker.meta.quizzer.audio.start === "default") {
+        const url = new URL(import.meta.url);
+        const path = url.pathname.substring(0, url.pathname.lastIndexOf("/"));
+        startAudioSource = path + "/wwm-question.mp3";
+      } else {
+        startAudioSource = Decker.meta.quizzer.audio.start;
+      }
+      startAudio = new Audio(startAudioSource);
+      startAudio.volume = Decker.meta.quizzer.audio.volume
+        ? Decker.meta.quizzer.audio.volume
+        : 1.0;
+    }
+    if (Decker.meta.quizzer?.audio?.loop) {
+      let loopAudioSource;
+      if (Decker.meta.quizzer.audio.loop === "default") {
+        const url = new URL(import.meta.url);
+        const path = url.pathname.substring(0, url.pathname.lastIndexOf("/"));
+        loopAudioSource = path + "/wwm-loop.mp3";
+      } else {
+        loopAudioSource = Decker.meta.quizzer.audio.loop;
+      }
+      loopAudio = new Audio(loopAudioSource);
+      loopAudio.volume = Decker.meta.quizzer.audio.volume
+        ? Decker.meta.quizzer.audio.volume
+        : 1.0;
+    }
+    if (Decker.meta.quizzer?.audio?.end) {
+      let endAudioSource;
+      if (Decker.meta.quizzer.audio.end === "default") {
+        const url = new URL(import.meta.url);
+        const path = url.pathname.substring(0, url.pathname.lastIndexOf("/"));
+        endAudioSource = path + "/wwm-answer.mp3";
+      } else {
+        endAudioSource = Decker.meta.quizzer.audio.end;
+      }
+      endAudio = new Audio(endAudioSource);
+      endAudio.volume = Decker.meta.quizzer.audio.volume
+        ? Decker.meta.quizzer.audio.volume
+        : 1.0;
+    }
     reveal.on("ready", () => {
       reveal.on("slidechanged", onSlideChange);
       Decker.addPresenterModeListener(onPresenterMode);
