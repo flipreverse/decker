@@ -13,6 +13,7 @@ import os.path
 import argparse
 import logging
 import subprocess
+import tempfile
 
 logging.basicConfig()
 LOGGER = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ LOGGER = logging.getLogger(__name__)
 SVG_SUBDIR = "pages"
 
 def checkTools():
-    tools = ["pdf2svg", "pdfinfo", "decker"]
+    tools = ["pdfinfo", "pdfseparate", "inkscape"]
     for tool in tools:
         if which(tool) is None:
             LOGGER.error(tool + " is missing")
@@ -32,11 +33,18 @@ def extractSlides(reader, inPdf, fBasename, outDir):
     svgDir = outDir + os.path.sep + SVG_SUBDIR
     if not os.path.isdir(svgDir):
         os.mkdir(svgDir)
-    svgFormat = svgDir + os.sep + fBasename + '-page-%02d.svg'
-    ret = subprocess.run("pdf2svg {} '{}' all".format(inPdf, svgFormat), shell=True, capture_output=True)
-    if ret.returncode != 0:
-        LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode().replace('\n', '')))
-        sys.exit(1)
+    with tempfile.TemporaryDirectory() as tmpDir:
+        svgFormat = os.path.join(tmpDir, fBasename + '-page-%02d.pdf')
+        ret = subprocess.run("pdfseparate {} '{}'".format(inPdf, svgFormat), shell=True, capture_output=True)
+        if ret.returncode != 0:
+            LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode().replace('\n', '')))
+            sys.exit(1)
+        for f in os.listdir(tmpDir):
+            svgOut = os.path.join(svgDir, os.path.splitext(f)[0] + '.svg')
+            ret = subprocess.run("inkscape {} --pages=1 --export-type=svg --export-filename='{}'".format(os.path.join(tmpDir, f), svgOut), shell=True, capture_output=True)
+            if ret.returncode != 0:
+                LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode()))
+                sys.exit(1)
 
 
 def extractOutline(outlines, level=0):
