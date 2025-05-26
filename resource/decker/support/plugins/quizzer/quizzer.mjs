@@ -73,6 +73,73 @@ function shuffle(array) {
   }
 }
 
+function isChoiceQuiz(container) {
+  const cl = container.classList;
+  return (
+    (cl.contains("quizzer") && cl.contains("choice")) ||
+    cl.contains("quizzer-mc") ||
+    cl.contains("quizzer-choice") ||
+    cl.contains("quizzer-multiple-choice")
+  );
+}
+
+function isSelectionQuiz(container) {
+  const cl = container.classList;
+  return (
+    (cl.contains("quizzer") && cl.contains("selection")) ||
+    cl.contains("quizzer-selection") ||
+    cl.contains("quizzer-ic") ||
+    cl.contains("quizzer-item-choice")
+  );
+}
+
+function isFreetextQuiz(container) {
+  const cl = container.classList;
+  return (
+    (cl.contains("quizzer") && cl.contains("freetext")) ||
+    cl.contains("quizzer-freetext") ||
+    cl.contains("quizzer-free-text") ||
+    cl.contains("quizzer-ft")
+  );
+}
+
+function isAssignmentQuiz(container) {
+  const cl = container.classList;
+  return (
+    (cl.contains("quizzer") && cl.contains("assignment")) ||
+    cl.contains("quizzer-assignment") ||
+    cl.contains("quizzer-match-items") ||
+    cl.contains("quizzer-mi")
+  );
+}
+
+const quizzerClasses = [
+  "quizzer",
+  "quizzer.choice",
+  "quizzer-choice",
+  "quizzer-mc",
+  "quizzer-multiple-choice",
+  "quizzer.selection",
+  "quizzer-selection",
+  "quizzer-ic",
+  "quizzer-item-choice",
+  "quizzer.assignment",
+  "quizzer-assignment",
+  "quizzer-match-items",
+  "quizzer-mi",
+  "quizzer.freetext",
+  "quizzer-freetext",
+  "quizzer-free-text",
+  "quizzer-ft",
+];
+
+function selectAllQuizzes(elem) {
+  const joined = quizzerClasses.map((name) => "." + name).join(", ");
+  const selector = "div:is(" + joined + ")";
+  const quizzers = elem.querySelectorAll(selector);
+  return quizzers;
+}
+
 /**
  * Parse out a JSON object representing the quiz out of the DOM of a .quizzer div.
  *
@@ -121,7 +188,7 @@ function parseQuizzes(reveal) {
     if (slide.classList.contains("vertical")) {
       continue;
     }
-    const quizzers = slide.querySelectorAll(":scope div.quizzer");
+    const quizzers = selectAllQuizzes(slide);
     /* ... check if there are more than one quiz on the slide and if so, replace the content of the slide with an error message ... */
     if (quizzers.length > 1) {
       const layout = slide.querySelector(":scope .layout");
@@ -145,13 +212,25 @@ function parseQuizzes(reveal) {
         question: undefined,
         choices: [],
       };
-      if (quizzer.classList.contains("assignment")) {
+      if (isAssignmentQuiz(quizzer)) {
+        quizzer.classList.remove(...quizzerClasses);
+        quizzer.classList.add("quizzer");
+        quizzer.classList.add("assignment");
         quizObject.type = "assignment";
-      } else if (quizzer.classList.contains("freetext")) {
+      } else if (isFreetextQuiz(quizzer)) {
+        quizzer.classList.remove(...quizzerClasses);
+        quizzer.classList.add("quizzer");
+        quizzer.classList.add("freetext");
         quizObject.type = "freetext";
-      } else if (quizzer.classList.contains("selection")) {
+      } else if (isSelectionQuiz(quizzer)) {
+        quizzer.classList.remove(...quizzerClasses);
+        quizzer.classList.add("quizzer");
+        quizzer.classList.add("selection");
         quizObject.type = "selection";
       } else {
+        quizzer.classList.remove(...quizzerClasses);
+        quizzer.classList.add("quizzer");
+        quizzer.classList.add("choice");
         quizObject.type = "choice";
       }
       /* ... interpret each list in the container as a choice object ... */
@@ -159,6 +238,12 @@ function parseQuizzes(reveal) {
         ":scope *:not(li) > ul, :scope > ul"
       );
       for (const list of lists) {
+        /* Workaround to replicate old quiz syntax behavior: Only handle lists that are direct children of the quizzer */
+        if (quizObject.type === "selection" || quizObject.type === "freetext") {
+          if (!list.parentElement.classList.contains("quizzer")) {
+            continue;
+          }
+        }
         const choiceObject = {
           votes: 1, // By default you have at least one vote
           options: [],
@@ -179,14 +264,14 @@ function parseQuizzes(reveal) {
           }
           /* ... cleanup ... */
           const checkbox = item.querySelector(":scope input[type='checkbox']");
+          /* ... and set its correctness based on if it was cheked or not. */
           if (checkbox) {
+            answerObject.correct = !!checkbox.checked;
             checkbox.remove();
           }
           /* ... add the the html of the item as its label (without the checkbox) ... */
           const label = item.innerHTML;
           answerObject.label = label;
-          /* ... and set its correctness based on if it was cheked or not. */
-          answerObject.correct = item.classList.contains("task-yes");
           choiceObject.options.push(answerObject);
         }
         /* ... if there is more than one correct choice the amount of votes is equal to the amount of possible answers. */
@@ -273,7 +358,7 @@ function parseQuizzes(reveal) {
           letter = String.fromCharCode(letter.charCodeAt(0) + 1);
         }
       }
-      /* Special handling of choice */
+      /* Special handling of quizzes to replicate old quiz behavior */
       if (quizObject.type === "choice") {
         for (const list of lists) {
           const container = Renderer.renderChoiceButtons(list.choices);
@@ -294,12 +379,15 @@ function parseQuizzes(reveal) {
           number++;
         }
       } else if (quizObject.type === "selection") {
-        const paragraphs = quizzer.querySelectorAll("p");
+        const paragraphs = quizzer.querySelectorAll(":scope > p");
         for (const paragraph of paragraphs) {
           const textNode = document.createTextNode(paragraph.innerText);
           paragraph.replaceWith(textNode);
         }
         for (const list of lists) {
+          if (!list.parentElement.classList.contains("quizzer")) {
+            continue;
+          }
           const container = Renderer.renderSelectBox(list.choices);
           list.replaceWith(container);
         }
@@ -308,7 +396,7 @@ function parseQuizzes(reveal) {
           list.remove();
         }
       }
-      /* ... remove hr elements from DOM because they are only used as list separators ... */
+      /* ... remove hr elements from DOM because they should only be used as list separators ... */
       const hrules = quizzer.querySelectorAll("hr");
       for (const hrule of hrules) {
         hrule.remove();
@@ -804,7 +892,11 @@ function renderResult(result) {
    * is extremely fiddly with d3sankey.
    */
   if (awaitingQuiz && awaitingQuiz.type === "assignment") {
+    const choice = awaitingQuiz.choices[0];
+    const options = choice.options;
+    const categories = choice.categories;
     const entry = document.createElement("div");
+
     entry.classList.add("quizzer-result");
     resultContainer.appendChild(entry);
     let total = 0;
@@ -837,9 +929,6 @@ function renderResult(result) {
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
     const nodes = [];
     const links = [];
-    const choice = awaitingQuiz.choices[0];
-    const options = choice.options;
-    const categories = choice.categories;
     for (const option of options) {
       const node = {
         node: nodes.length,

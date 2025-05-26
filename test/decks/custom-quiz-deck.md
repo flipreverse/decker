@@ -375,7 +375,7 @@ Hello World. This is a new paragraph.
 This is another paragraph.
 
 
-# Test
+# Test - old qic class
 
 ::: qic
 
@@ -387,18 +387,265 @@ This is some Text.
 
 ::: test
 
-These paragraphs are inside a div, they are not removed and also not handled as quiz syntax.
+This paragraph is inside a div, it is not removed and also not handled as quiz syntax.
 
 - [X] Pandoc
   - See previous tooltip.
 - [ ] PowerPoint
-
-What is happending here?
 
 :::
 
 ![](./@f{u}nn%20y.png)
 
 This is another paragraph.
+
+:::
+
+# Test - new quizzer-ic class
+
+::: quizzer-ic
+
+This is some Text.
+
+- [X] Pandoc
+  - See previous tooltip.
+- [ ] PowerPoint
+
+::: test
+
+This paragraph is inside a div, it is not removed and also not handled as quiz syntax.
+
+- [X] Pandoc
+  - See previous tooltip.
+- [ ] PowerPoint
+
+:::
+
+![](./@f{u}nn%20y.png)
+
+This is another paragraph.
+
+:::
+
+# Trigger Tests
+
+# .quizzer
+
+::: quizzer
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer.choice
+
+::: {.quizzer .choice}
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-choice
+
+::: quizzer-choice
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-mc
+
+::: quizzer-mc
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-multiple-choice
+
+::: quizzer-multiple-choice
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer.selection
+
+::: {.quizzer .selection}
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-selection
+
+::: quizzer-selection
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-ic
+
+::: quizzer-ic
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-item-choice
+
+::: quizzer-item-choice
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer.freetext
+
+::: {.quizzer .freetext}
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-freetext
+
+::: quizzer-freetext
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-free-text
+
+::: quizzer-free-text
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer-ft
+
+::: quizzer-ft
+
+- [ ] One
+  - Reason One (Wrong)
+- [x] Two
+  - Reason Two (Correct)
+- [ ] Three
+  - Reson Three (Wrong)
+
+:::
+
+# .quizzer.assignment
+
+::: {.quizzer .assignment}
+
+- [ ] One
+  - Reason One
+- [x] Two
+  - Reason Two
+- [ ] Three
+  - Reson Three
+
+:::
+
+# .quizzer-assignment
+
+::: quizzer-assignment
+
+- [ ] One
+  - Reason One
+- [x] Two
+  - Reason Two
+- [ ] Three
+  - Reson Three
+
+:::
+
+# .quizzer-mi
+
+::: quizzer-mi
+
+- [ ] One
+  - Reason One
+- [x] Two
+  - Reason Two
+- [ ] Three
+  - Reson Three
+
+:::
+
+# .quizzer-match-items
+
+::: quizzer-match-items
+
+- [ ] One
+  - Reason One
+- [x] Two
+  - Reason Two
+- [ ] Three
+  - Reson Three
 
 :::
