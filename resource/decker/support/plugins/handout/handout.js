@@ -115,6 +115,7 @@ function activateHandoutMode() {
   // Switch state of view menu button
   if (pluginButton) {
     pluginButton.setLabel(localization.deactivate_handout_mode);
+    pluginButton.ariaPressed = "true";
   }
 
   // Store current reveal config and disable everything but keyboard shortcuts
@@ -290,6 +291,7 @@ function disassembleHandoutMode() {
   // Change state of view menu button
   if (pluginButton) {
     pluginButton.setLabel(localization.activate_handout_mode);
+    pluginButton.ariaPressed = "false";
   }
 
   // Restore configuration
@@ -685,15 +687,6 @@ function toggleHandoutMode() {
   }
 }
 
-function attachAnimatedIcon(button) {
-  const first = document.createElement("div");
-  first.className = "top-anim-rect";
-  const second = document.createElement("div");
-  second.className = "bottom-anim-rect";
-  button.appendChild(first);
-  button.appendChild(second);
-}
-
 /**
  * Add handout mode button to Menu plugin.
  * Add zoom in/out buttons to top right anchor.
@@ -708,7 +701,7 @@ function createButtons() {
       localization.activate_handout_mode,
       toggleHandoutMode
     );
-    attachAnimatedIcon(pluginButton);
+    pluginButton.ariaPressed = "false";
   }
 
   // add zoom in/out buttons
