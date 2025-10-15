@@ -15,7 +15,8 @@
     <codapi-snippet
       id="$id$"
       engine="$if(engine)$$engine$$else$codapi$endif$"
-      sandbox="$if(sandbox)$$sandbox/lowercase$$else$$language/lowercase$$endif$"
+      sandbox="$if(sandbox)$$sandbox$$else$$if(meta.codapi.sandbox)$$meta.codapi.sandbox$$else$$language$$endif$$endif$"
+      command="$if(command)$$command$$else$$if(meta.codapi.command)$$meta.codapi.command$$else$run$endif$$endif$"
       editor="external"
       selector="#$rnd-id$"
       class="$classes$"
