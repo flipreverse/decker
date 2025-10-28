@@ -23,22 +23,6 @@
   visibility: hidden;
 }
 
-.open-button .icon-combo {
-  display: grid;
-  grid-template-areas: "icons";
-  justify-items: center;
-}
-
-.open-button .icon-combo span {
-  grid-area: icons;
-}
-
-.open-button .icon-combo .fa-question {
-  font-size: 60%;
-  line-height: 1.5;
-  color: var(--background-color);
-}
-
 .open-button .feedback-badge {
   font-size: 50%;
 }

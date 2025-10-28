@@ -532,8 +532,6 @@ async function getDevices() {
 async function setupRecorder() {
   if (!Decker.isPresenterMode()) {
     Decker.togglePresenterMode();
-    // Decker.flash.message(localization.presenter_mode_error);
-    // return false;
   }
   try {
     stream = null;
@@ -1982,7 +1980,7 @@ const Plugin = {
       if (menuPlugin && !!menuPlugin.addPluginButton) {
         pluginButton = menuPlugin.addPluginButton(
           "decker-menu-recording-button",
-          "fa-video",
+          "fas fa-video",
           localization.init_recording,
           () => {
             if (pluginButton.ariaDisabled === "true") {
@@ -1994,7 +1992,7 @@ const Plugin = {
                 uiState.transition("setupRecorder");
                 break;
               default:
-                Decker.flash.message(
+                Decker.flashMessage(
                   `<span>${localization.invalid_state}</span>`
                 );
             }
