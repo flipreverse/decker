@@ -2,6 +2,7 @@ on:
   push:
     branches:
       - "develop"
+      - "ak"
 
 name: Release develop branch
 jobs:
