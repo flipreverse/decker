@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Requirements: pdf2svg, pdfinfo, decker, python3-pypdf
+# Requirements: pdf2svg, pdfinfo, python3-pypdf, pdfseparate
 
 from __future__ import print_function
 from pprint import pprint
@@ -15,13 +15,60 @@ import logging
 import subprocess
 import tempfile
 
-logging.basicConfig()
-LOGGER = logging.getLogger(__name__)
-
 SVG_SUBDIR = "pages"
 
+ASPECT_RATIOS={}
+ASPECT_RATIOS[1.6] = [(1280,800),(1440,900),(1680,1050),(1920,1200),(2560,1600),(3840,2400)]
+ASPECT_RATIOS[1.3] = [(320,240),(640,480),(800,600),(1024,768),(1152,864),(2048,1536),(3200,2400)]
+ASPECT_RATIOS[1.7] = [(640,360),(854,480),(960,540),(1024,576),(1280,720),(1366,768),(1600,900),(1920,1080),(2560,1440),(3200,1800)]
+
+# Thanks to https://alexandra-zaharia.github.io/posts/make-your-own-custom-color-formatter-with-python-logging/
+class CustomFormatter(logging.Formatter):
+    """Logging colored formatter, adapted from https://stackoverflow.com/a/56944256/3638629"""
+
+    grey = '\x1b[90m'
+    blue = '\x1b[94m'
+    yellow = '\x1b[93m'
+    red = '\x1b[91m'
+    bold_red = '\x1b[31;1m'
+    reset = '\x1b[0m'
+
+    def __init__(self, fmt):
+        super().__init__()
+        self.fmt = fmt
+        self.FORMATS = {
+            logging.DEBUG: self.grey + self.fmt + self.reset,
+            logging.INFO: self.blue + self.fmt + self.reset,
+            logging.WARNING: self.yellow + self.fmt + self.reset,
+            logging.ERROR: self.red + self.fmt + self.reset,
+            logging.CRITICAL: self.bold_red + self.fmt + self.reset
+        }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+OWN_HANDLER = logging.StreamHandler()
+OWN_HANDLER.setLevel(logging.DEBUG)
+OWN_HANDLER.setFormatter(CustomFormatter('%(asctime)s | %(levelname)8s | %(message)s'))
+logging.basicConfig(handlers=[OWN_HANDLER], level=logging.INFO, force=True)
+LOGGER = logging.getLogger(__name__)
+
+def findResolution(width,height):
+    ratio = round(width / height, 1)
+    if ratio in ASPECT_RATIOS:
+        for (w,h) in ASPECT_RATIOS[ratio]:
+            LOGGER.debug('Testing {} x {}'.format(w, h))
+            if width < w and height < h:
+                return (w, h)
+        return None
+    else:
+        LOGGER.debug('No matching resolution found for: {} x {}'.format(width, height))
+        return None
+
 def checkTools():
-    tools = ["pdfinfo", "pdfseparate", "inkscape"]
+    tools = ["pdfinfo", "pdfseparate", "inkscape", "pdf2svg"]
     for tool in tools:
         if which(tool) is None:
             LOGGER.error(tool + " is missing")
@@ -29,23 +76,36 @@ def checkTools():
     return True
 
 
-def extractSlides(reader, inPdf, fBasename, outDir):
+def extractSlides(reader, inPdf, fBasename, outDir, useExternal=False):
     svgDir = outDir + os.path.sep + SVG_SUBDIR
     if not os.path.isdir(svgDir):
         os.mkdir(svgDir)
-    with tempfile.TemporaryDirectory() as tmpDir:
-        svgFormat = os.path.join(tmpDir, fBasename + '-page-%02d.pdf')
-        ret = subprocess.run("pdfseparate {} '{}'".format(inPdf, svgFormat), shell=True, capture_output=True)
+
+    if useExternal:
+        with tempfile.TemporaryDirectory() as tmpDir:
+            svgFormat = os.path.join(tmpDir, fBasename + '-page-%02d.pdf')
+            cmd = "pdfseparate {} '{}'".format(inPdf, svgFormat)
+            LOGGER.debug('Running "{}"'.format(cmd))
+            ret = subprocess.run(cmd, shell=True, capture_output=True)
+            if ret.returncode != 0:
+                LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode().replace('\n', '')))
+                sys.exit(1)
+            for f in os.listdir(tmpDir):
+                svgOut = os.path.join(svgDir, os.path.splitext(f)[0] + '.svg')
+                cmd = "inkscape {} --export-type=svg --export-filename='{}'".format(os.path.join(tmpDir, f), svgOut)
+                LOGGER.debug('Running "{}"'.format(cmd))
+                ret = subprocess.run(cmd, shell=True, capture_output=True)
+                if ret.returncode != 0:
+                    LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode()))
+                    sys.exit(1)
+    else:
+        svgFormat = svgDir + os.sep + fBasename + '-page-%02d.svg'
+        cmd = "pdf2svg {} '{}' all".format(inPdf, svgFormat)
+        LOGGER.debug('Running "{}"'.format(cmd))
+        ret = subprocess.run(cmd , shell=True, capture_output=True)
         if ret.returncode != 0:
             LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode().replace('\n', '')))
             sys.exit(1)
-        for f in os.listdir(tmpDir):
-            svgOut = os.path.join(svgDir, os.path.splitext(f)[0] + '.svg')
-            ret = subprocess.run("inkscape {} --pages=1 --export-type=svg --export-filename='{}'".format(os.path.join(tmpDir, f), svgOut), shell=True, capture_output=True)
-            if ret.returncode != 0:
-                LOGGER.fatal("error running \"{}\":\n{}".format(ret.args, ret.stderr.decode()))
-                sys.exit(1)
-
 
 def extractOutline(outlines, level=0):
     ret = dict()
@@ -71,6 +131,8 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--no-decker', action='store_true', help='Do not generate decker.yaml')
     parser.add_argument('-t', '--no-title', action='store_true', help='Do not add a dedicated title slide')
     parser.add_argument('-u', '--update', action='store_true', help='Just update the extracted slides.')
+    parser.add_argument('-e', '--embed', action='store_true', default=False, help='Use CSS class \'.embed\' for each SVG.\nAllows to mark text in SVGs if inkscape is used.')
+    parser.add_argument('-i', '--inkscape', action='store_true', default=False, help='Use inkscape to convert every slide to SVG.\nCurrently, Inkscape is used.')
     parser.add_argument('pdf', help='The PDF file to convert')
     parser.add_argument('decker_dir', help='The output dir to store the decker files')
     args = parser.parse_args()
@@ -92,7 +154,7 @@ if __name__ == '__main__':
         os.mkdir(outDir)
 
     reader = PdfReader(inPdf)
-    extractSlides(reader, inPdf, fBasename, outDir)
+    extractSlides(reader, inPdf, fBasename, outDir, args.inkscape)
     if args.update:
         sys.exit(0)
     outline = extractOutline(reader.outline)
@@ -118,9 +180,18 @@ if __name__ == '__main__':
             f.write("title: '{}'\n".format(title))
         if not args.no_author:
             f.write("author: '{}'\n".format(meta.author))
+        width = 0
+        height = 0
+        res = findResolution(firstPage.mediabox.width, firstPage.mediabox.height)
+        if res is None:
+            width = firstPage.mediabox.width
+            height = firstPage.mediabox.height
+        else:
+            width = res[0]
+            height = res[1]
         f.write("reveal:\n")
-        f.write("  width: {:.2f}\n".format(firstPage.mediabox.width * scale))
-        f.write("  height: {:.2f}\n".format(firstPage.mediabox.height * scale))
+        f.write("  width: {:.2f}\n".format(width))
+        f.write("  height: {:.2f}\n".format(height))
         f.write("---\n\n")
         i = 0
         k = 0
@@ -137,7 +208,10 @@ if __name__ == '__main__':
                 menuTitle = "{} ({:d})".format(last['title'], k)
             f.write("# {{ menu-title=\"{}\" .pdf2decker }}\n\n".format(menuTitle))
             svgName = SVG_SUBDIR + os.sep + fBasename + "-page-{:02d}".format(i + 1) + ".svg"
-            f.write("![]({}){{width=var(--slide-width) height=var(--slide-height)}}\n\n".format(svgName))
+            embed = ''
+            if args.embed:
+                embed = '.embed '
+            f.write("![]({}){{{}width=var(--slide-width) height=var(--slide-height)}}\n\n".format(svgName, embed))
             if "/Annots" in page:
                 for annot in page["/Annots"]:
                     obj = annot.get_object()
